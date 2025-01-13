@@ -9,6 +9,7 @@ public class Sort_Manager : MonoBehaviour
     private Rigidbody targetRb;
     private WaitForSeconds waitTime = new WaitForSeconds(0.05f);
     private bool isChanging = false;
+    private Renderer targetRenderer;
     #endregion
 
     #region public 변수 
@@ -22,13 +23,13 @@ public class Sort_Manager : MonoBehaviour
         for (int i = 0; i < objNum; i++)
         {
             targetList.Add(Instantiate(target));
-            targetList[i].transform.position = new Vector3(i, Random.Range(0,25), 0);
+            targetList[i].transform.position = new Vector3(i, Random.Range(0, 25), 0);
             targetList[i].transform.localScale = new Vector3(1.0f, 1.0f + i, 1.0f);
         }
         StartCoroutine(Shuffle());
     }
 
-   
+
     void Update()
     {
         if (isChanging == false)
@@ -42,6 +43,19 @@ public class Sort_Manager : MonoBehaviour
                 StartCoroutine(Sellect());
             }
         }
+    }
+
+    private IEnumerator resetPosition()
+    {
+        for (int i = 0; i < objNum; i++)
+        {
+            targetList[i].transform.position = new Vector3(targetList[i].transform.position.x, targetList[i].transform.localScale.y, 0);
+            if (targetList[i].TryGetComponent(out Cube t))
+            {
+                t.SetKinematic(false);
+            }
+        }
+        yield return null;
     }
 
     private IEnumerator Shuffle()
@@ -83,38 +97,47 @@ public class Sort_Manager : MonoBehaviour
     private IEnumerator Sellect()
     {
         isChanging = true;
-        for (int i = 0; i < objNum; i++)
+        for (int i = 0; i < objNum-1; i++)
         {
+            int changeNum = i;
             GameObject Select_obj = targetList[i];
-            if (Select_obj.TryGetComponent(out Renderer r))
+            if (targetList[i].TryGetComponent(out Renderer r))
             {
                 r.material = changeMat[1];
             }
-            for (int j =i-1; j >= 0; j--)
+            targetRenderer = Select_obj.GetComponent<Renderer>();
+            for (int j = i+1; j < objNum; j++)
             {
-                if (targetList[j+1].transform.localScale.y < targetList[j].transform.localScale.y)
+                if (Select_obj.transform.localScale.y > targetList[j].transform.localScale.y)
                 {
-                    GameObject tempobj = targetList[j+1];
-                    targetList[j+1] = targetList[j];
-                    targetList[j] = tempobj;
-                    
+                    if (Select_obj != targetList[i])
+                    {
+                        targetRenderer.material = changeMat[0];
+                    }
+                    Select_obj = targetList[j];
+                    changeNum = j;
+                    if (Select_obj.TryGetComponent(out Renderer t))
+                    {
+                        targetRenderer = t;
+                    }
+                    targetRenderer.material = changeMat[2];
                 }
-            }
-
-
-
-            GameObject[] changePosition = new GameObject[2] { targetList[i], Select_obj };
-           
             yield return waitTime;
+            }
+            GameObject tempobj = targetList[i];
+            targetList[i] = targetList[changeNum];
+            targetList[changeNum] = tempobj;
+
+            GameObject[] changePosition = new GameObject[2] { targetList[i], targetList[changeNum] };
+
             Vector3 temp = changePosition[1].transform.position;
             changePosition[1].transform.position = changePosition[0].transform.position;
             changePosition[0].transform.position = temp;
-
-            yield return new WaitForSeconds(1.0f);
-            Debug.Log("한번");
             r.material = changeMat[0];
+            targetRenderer.material = changeMat[0];
+
         }
-        
+        StartCoroutine(resetPosition());
         isChanging = false;
     }
 
